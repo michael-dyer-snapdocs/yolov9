@@ -1,0 +1,40 @@
+# YOLOv9 Hyperparameters - Optimized for Object Counting
+# Focus: High recall and precision for accurate counting
+# Trade-off: Less emphasis on tight bounding box localization
+
+# Learning rate settings
+lr0: 0.01  # initial learning rate (SGD=1E-2, Adam=1E-3)
+lrf: 0.001  # final OneCycleLR learning rate (more aggressive decay for fine-tuning)
+momentum: 0.937  # SGD momentum/Adam beta1
+weight_decay: 0.0005  # optimizer weight decay 5e-4
+warmup_epochs: 3.0  # warmup epochs (fractions ok)
+warmup_momentum: 0.8  # warmup initial momentum
+warmup_bias_lr: 0.1  # warmup initial bias lr
+
+# Loss weights - optimized for detection over localization
+box: 5.0  # box loss gain (reduced from 7.5 - localization less critical)
+cls: 1.0  # cls loss gain (increased from 0.5 - emphasize classification)
+cls_pw: 1.0  # cls BCELoss positive_weight
+obj: 0.7  # obj loss gain (scale with pixels)
+obj_pw: 1.0  # obj BCELoss positive_weight
+dfl: 1.0  # dfl loss gain (reduced from 1.5)
+iou_t: 0.15  # IoU training threshold (reduced from 0.20 - more lenient for recall)
+anchor_t: 5.0  # anchor-multiple threshold
+fl_gamma: 0.0  # focal loss gamma (efficientDet default gamma=1.5)
+
+# Image augmentation - optimized for variable text appearance
+hsv_h: 0.02  # image HSV-Hue augmentation (increased - dates/initials have varied colors)
+hsv_s: 0.8  # image HSV-Saturation augmentation (increased)
+hsv_v: 0.5  # image HSV-Value augmentation (increased)
+degrees: 0.0  # image rotation (+/- deg)
+translate: 0.1  # image translation (+/- fraction)
+scale: 0.8  # image scale (+/- gain, increased from 0.9 for size variance)
+shear: 0.0  # image shear (+/- deg)
+perspective: 0.0  # image perspective (+/- fraction), range 0-0.001
+flipud: 0.0  # image flip up-down (probability)
+fliplr: 0.5  # image flip left-right (probability)
+
+# Advanced augmentation - conservative to avoid instability (per Gemini recommendation)
+mosaic: 1.0  # image mosaic (probability)
+mixup: 0.15  # image mixup (keep same as baseline for stability)
+copy_paste: 0.2  # segment copy-paste (conservative increase from 0.3)

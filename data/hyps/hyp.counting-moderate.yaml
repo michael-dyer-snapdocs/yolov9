@@ -1,0 +1,40 @@
+# YOLOv9 Hyperparameters - Moderate Counting Optimization
+# Less aggressive changes - staying closer to proven baseline
+# Focus: Slight emphasis on classification while maintaining localization quality
+
+# Learning rate settings
+lr0: 0.01  # initial learning rate
+lrf: 0.01  # final OneCycleLR learning rate (same as baseline)
+momentum: 0.937  # SGD momentum
+weight_decay: 0.0005  # optimizer weight decay
+warmup_epochs: 3.0  # warmup epochs
+warmup_momentum: 0.8  # warmup initial momentum
+warmup_bias_lr: 0.1  # warmup initial bias lr
+
+# Loss weights - moderate adjustments (closer to baseline)
+box: 7.0  # box loss gain (slight decrease from 7.5, not as aggressive as 5.0)
+cls: 0.7  # cls loss gain (moderate increase from 0.5, not as aggressive as 1.0)
+cls_pw: 1.0  # cls BCELoss positive_weight
+obj: 0.7  # obj loss gain
+obj_pw: 1.0  # obj BCELoss positive_weight
+dfl: 1.3  # dfl loss gain (slight decrease from 1.5)
+iou_t: 0.18  # IoU training threshold (slight decrease from 0.20, not as lenient as 0.15)
+anchor_t: 5.0  # anchor-multiple threshold
+fl_gamma: 0.0  # focal loss gamma
+
+# Image augmentation - keep baseline (proven to work)
+hsv_h: 0.015  # image HSV-Hue augmentation (baseline)
+hsv_s: 0.7  # image HSV-Saturation augmentation (baseline)
+hsv_v: 0.4  # image HSV-Value augmentation (baseline)
+degrees: 0.0  # image rotation
+translate: 0.1  # image translation
+scale: 0.9  # image scale (baseline)
+shear: 0.0  # image shear
+perspective: 0.0  # image perspective
+flipud: 0.0  # image flip up-down
+fliplr: 0.5  # image flip left-right
+
+# Advanced augmentation - keep baseline
+mosaic: 1.0  # image mosaic
+mixup: 0.15  # image mixup (baseline)
+copy_paste: 0.3  # segment copy-paste (baseline)

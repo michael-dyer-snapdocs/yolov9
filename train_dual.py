@@ -14,7 +14,13 @@ import torch.distributed as dist
 import torch.nn as nn
 import yaml
 from torch.optim import lr_scheduler
-from tqdm import tqdm
+try:
+    from tqdm_loggable.auto import tqdm
+except ImportError:
+    from tqdm import tqdm
+
+# MLflow support (required)
+import mlflow
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLO root directory
@@ -371,6 +377,69 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
             if fi > best_fitness:
                 best_fitness = fi
             log_vals = list(mloss) + list(results) + lr
+
+            # Log to MLflow
+            if mlflow.active_run():
+                try:
+                    # Training losses (from mloss: [box_loss, cls_loss, dfl_loss])
+                    mlflow.log_metrics({
+                        "train/box_loss": mloss[0].item() if hasattr(mloss[0], 'item') else float(mloss[0]),
+                        "train/cls_loss": mloss[1].item() if hasattr(mloss[1], 'item') else float(mloss[1]),
+                        "train/dfl_loss": mloss[2].item() if hasattr(mloss[2], 'item') else float(mloss[2]),
+                    }, step=epoch)
+
+                    # Validation metrics (from results: [P, R, mAP@.5, mAP@.5-.95, box_loss, cls_loss, dfl_loss])
+                    if len(results) >= 4:
+                        val_metrics = {
+                            "val/precision": float(results[0]),
+                            "val/recall": float(results[1]),
+                            "val/mAP_50": float(results[2]),
+                            "val/mAP_50-95": float(results[3]),
+                        }
+
+                        # Log validation losses if available (results[4:7])
+                        if len(results) >= 7:
+                            val_metrics["val/box_loss"] = float(results[4])
+                            val_metrics["val/cls_loss"] = float(results[5])
+                            val_metrics["val/dfl_loss"] = float(results[6])
+
+                        mlflow.log_metrics(val_metrics, step=epoch)
+
+                    # Fitness metric (weighted combination used for early stopping)
+                    mlflow.log_metric("train/fitness", float(fi), step=epoch)
+                    mlflow.log_metric("train/best_fitness", float(best_fitness), step=epoch)
+
+                    # Per-class mAP (optional, useful for understanding class-specific performance)
+                    if len(maps) > 0 and len(maps) == len(names):
+                        per_class_metrics = {}
+                        for i, class_name in names.items():
+                            if i < len(maps):
+                                per_class_metrics[f"val/mAP_50-95/{class_name}"] = float(maps[i])
+                        if per_class_metrics:
+                            mlflow.log_metrics(per_class_metrics, step=epoch)
+
+                    # System metrics
+                    system_metrics = {}
+                    if torch.cuda.is_available():
+                        system_metrics["system/gpu_memory_reserved_gb"] = torch.cuda.memory_reserved() / 1E9
+                        system_metrics["system/gpu_memory_allocated_gb"] = torch.cuda.memory_allocated() / 1E9
+
+                    # Learning rate (lr is a list with rates for different parameter groups)
+                    if len(lr) > 0:
+                        system_metrics["system/learning_rate"] = lr[0] if isinstance(lr, list) else float(lr)
+                        # Log additional LR groups if they exist (e.g., different rates for backbone vs head)
+                        if isinstance(lr, list) and len(lr) > 1:
+                            for i, lr_val in enumerate(lr[1:], 1):
+                                system_metrics[f"system/learning_rate_pg{i}"] = float(lr_val)
+
+                    if system_metrics:
+                        mlflow.log_metrics(system_metrics, step=epoch)
+
+                    metrics_count = 3 + len(val_metrics) + 2 + len(system_metrics) + len(per_class_metrics if 'per_class_metrics' in locals() else {})
+                    LOGGER.info(f"📊 Logged {metrics_count} metrics to MLflow for epoch {epoch}")
+                except Exception as e:
+                    LOGGER.warning(f"Failed to log metrics to MLflow: {e}")
+
             callbacks.run('on_fit_epoch_end', log_vals, epoch, best_fitness, fi)
 
             # Save model
